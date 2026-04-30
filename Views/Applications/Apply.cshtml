@@ -1,0 +1,77 @@
+@using rent_for_students.ViewModels
+@using rent_for_students.Domain.Contracts
+@model RentalApplicationCreateViewModel
+@{
+    ViewData["Title"] = "Apply for Listing";
+    IReadOnlyList<IRentalApplicationPrototype> profiles =
+        ViewData["ApplicationProfiles"] as IReadOnlyList<IRentalApplicationPrototype> ?? Array.Empty<IRentalApplicationPrototype>();
+}
+
+<h2>Apply for Listing</h2>
+
+@if (ViewData["ListingTitle"] is string listingTitle && !string.IsNullOrWhiteSpace(listingTitle))
+{
+    <p class="muted">Listing: <strong>@listingTitle</strong></p>
+}
+
+@if (profiles.Count > 0)
+{
+    <div class="card" style="margin-bottom:16px;">
+        <h3 style="margin-top:0;">Apply from saved profile</h3>
+        <form method="post" asp-action="ApplyFromProfile">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ListingId" value="@Model.ListingId" />
+            <label for="ProfileId">Profile</label>
+            <select id="ProfileId" name="ProfileId">
+                @foreach (var profile in profiles)
+                {
+                    <option value="@profile.Id">@profile.ProfileName (@profile.ApplicantName)</option>
+                }
+            </select>
+
+            <div style="margin-top:12px;">
+                <button class="btn btn-secondary" type="submit">Apply from profile</button>
+            </div>
+        </form>
+    </div>
+}
+
+<form method="post" class="card">
+    <input asp-for="ListingId" type="hidden" />
+
+    <div asp-validation-summary="All" style="color:#b00020;"></div>
+
+    <label>Name</label>
+    <input asp-for="ApplicantName" />
+    <span asp-validation-for="ApplicantName" style="color:#b00020;"></span>
+
+    <label>Phone</label>
+    <input asp-for="Phone" />
+    <span asp-validation-for="Phone" style="color:#b00020;"></span>
+
+    <label>Email</label>
+    <input asp-for="Email" type="email" />
+    <span asp-validation-for="Email" style="color:#b00020;"></span>
+
+    <label>Message</label>
+    <textarea asp-for="Message" rows="4"></textarea>
+    <span asp-validation-for="Message" style="color:#b00020;"></span>
+
+    <div style="margin-top:12px;">
+        <label>
+            <input asp-for="SaveAsProfile" />
+            Save as profile for future applications
+        </label>
+    </div>
+
+    <label>Profile name (optional)</label>
+    <input asp-for="ProfileName" placeholder="e.g. Basic Student Profile" />
+    <span asp-validation-for="ProfileName" style="color:#b00020;"></span>
+
+    <div style="margin-top:12px;">
+        <button class="btn btn-primary" type="submit">Submit application</button>
+        <a class="btn" asp-controller="Listings" asp-action="Details" asp-route-id="@Model.ListingId">Cancel</a>
+    </div>
+</form>
+
+<partial name="_ValidationScriptsPartial" />

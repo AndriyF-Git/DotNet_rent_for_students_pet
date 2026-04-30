@@ -1,0 +1,87 @@
+@startuml
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title StudentRent v1.1 - Part 2 (Domain)
+
+package "Domain.Entities" {
+  class HousingListing {
+    +Id: Guid
+    +Title: string
+    +Description: string
+    +City: string
+    +District: string
+    +PricePerMonth: decimal
+    +RoomType: RoomType
+    +AreaSqm: int
+    +IsActive: bool
+    +CreatedAtUtc: DateTime
+  }
+
+  class RentalApplication {
+    +Id: Guid
+    +ListingId: Guid
+    +ApplicantName: string
+    +Phone: string
+    +Email: string
+    +Message: string
+    +Status: ApplicationStatus
+    +CreatedAtUtc: DateTime
+    +Approve()
+  }
+
+  enum RoomType {
+    Studio
+    OneBedroom
+    TwoBedroom
+    ThreeBedroom
+  }
+
+  enum ApplicationStatus {
+    Pending
+    Approved
+    Rejected
+  }
+}
+
+package "Domain.Requests" {
+  class ListingSearchCriteria
+}
+
+package "Domain.Contracts" {
+  interface IHousingRepository {
+    +GetByIdAsync(id, ct)
+    +SearchAsync(criteria, ct)
+    +AddAsync(listing, ct)
+    +UpdateAsync(listing, ct)
+    +SaveChangesAsync(ct)
+  }
+
+  interface IRentalApplicationRepository {
+    +AddAsync(app, ct)
+    +GetByIdAsync(id, ct)
+    +ListByListingIdAsync(listingId, ct)
+    +SaveChangesAsync(ct)
+  }
+}
+
+package "Domain.Services" {
+  class HousingService {
+    +SearchListingsAsync(criteria, ct)
+    +GetListingDetailsAsync(id, ct)
+    +CreateListingAsync(listing, ct)
+    +CreateListingDraftAsync(draft, ct)
+    +UpdateListingDraftAsync(id, draft, ct)
+    +PublishListingAsync(id, ct)
+    +UpdateListingAsync(id, listing, ct)
+  }
+}
+
+HousingService --> IHousingRepository
+ListingSearchCriteria --> RoomType
+HousingListing --> RoomType
+RentalApplication --> ApplicationStatus
+
+@enduml

@@ -1,0 +1,32 @@
+@using rent_for_students.ViewModels
+@model ListingApplicationsViewModel
+@{
+    ViewData["Title"] = "Listing Applications";
+}
+
+<h2>Applications for "@Model.ListingTitle"</h2>
+
+<p>
+    <a class="btn" asp-controller="Listings" asp-action="Details" asp-route-id="@Model.ListingId">Back to listing</a>
+</p>
+
+@if (Model.Applications.Count == 0)
+{
+    <p class="muted">No applications yet.</p>
+}
+else
+{
+    @foreach (var app in Model.Applications)
+    {
+        <div class="card">
+            <div><strong>@app.ApplicantName</strong> (@app.Email)</div>
+            <div class="muted">@app.Phone</div>
+            <div>Status: @app.Status</div>
+            <div class="muted">Created: @app.CreatedAtUtc.ToString("u")</div>
+            @if (!string.IsNullOrWhiteSpace(app.Message))
+            {
+                <div style="margin-top:8px;">@app.Message</div>
+            }
+        </div>
+    }
+}

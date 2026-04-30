@@ -1,0 +1,205 @@
+﻿@startuml StudentRent-ClassDiagram-core-v1_3
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam ranksep 70
+skinparam nodesep 50
+top to bottom direction
+
+title StudentRent Class Diagram core v1.3 (Patterns: Command + Mediator + Template Method)
+
+package "Controllers" as CTRL {
+  class ListingsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+  }
+
+  class ApplicationsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    -_applicationMediator: IApplicationUseCaseMediator
+  }
+}
+
+package "Commands" as CMD {
+  interface "ICommand<TResult>" as ICommandT
+  class CommandDispatcher
+
+  class ListingCommand {
+    -_receiver: IListingUseCaseMediator
+  }
+
+  class ApplicationCommand {
+    -_receiver: IApplicationUseCaseMediator
+  }
+}
+
+package "UseCases" as UC {
+  abstract class BaseUseCaseMediator {
+    #_notificationService: INotificationService
+    #ValidationFailure<T>(validation: OperationValidationResult): Result<T>
+    #Success<T>(value: T, message?: string): Result<T>
+    #NotifyIfNeededAsync(message?: string, ct: CancellationToken): Task
+  }
+
+  interface IListingUseCaseMediator
+  class ListingUseCaseMediator {
+    -_housingService: HousingService
+  }
+
+  interface IApplicationUseCaseMediator
+  class ApplicationUseCaseMediator {
+    -_housingService: HousingService
+    -_applicationRepo: IRentalApplicationRepository
+  }
+}
+
+package "Common" as COM {
+  class Result {
+    +IsSuccess: bool
+    +ErrorCode: string
+    +Message: string
+  }
+
+  class "Result<T>" as ResultT {
+    +Value: T
+  }
+
+  class ErrorCodes
+  class OperationValidationResult {
+    +IsValid: bool
+    +ErrorCode: string?
+    +ErrorMessage: string?
+    +{static} Valid()
+    +{static} Invalid(message: string, errorCode?: string)
+  }
+}
+
+package "Notifications" as NOTIF {
+  interface INotificationService
+}
+
+package "Entities" as ENT {
+  class HousingListing {
+    +Id: Guid
+    +Title: string
+    +PricePerMonth: decimal
+    +RoomType: RoomType
+    +IsActive: bool
+    +CreatedAtUtc: DateTime
+  }
+
+  class RentalApplication {
+    +Id: Guid
+    +ListingId: Guid
+    +ApplicantName: string
+    +Email: string
+    +Status: ApplicationStatus
+    +CreatedAtUtc: DateTime
+  }
+
+  enum RoomType {
+    Studio
+    OneBedroom
+    TwoBedroom
+    ThreeBedroom
+  }
+
+  enum ApplicationStatus {
+    Pending
+    Approved
+    Rejected
+  }
+}
+
+package "Requests" as REQ {
+  class ListingSearchCriteria
+}
+
+package "Contracts" as CNTR {
+  interface IHousingRepository
+  interface IRentalApplicationRepository
+}
+
+package "Services" as SRV {
+  class HousingService
+}
+
+package "Infrastructure" as INF {
+  class AppDbContext {
+    +HousingListings: DbSet<HousingListing>
+    +RentalApplications: DbSet<RentalApplication>
+  }
+
+  class EfHousingRepository {
+    -_db: AppDbContext
+  }
+
+  class EfRentalApplicationRepository {
+    -_db: AppDbContext
+  }
+
+  class LogNotificationService {
+    -_logger: ILogger<LogNotificationService>
+  }
+}
+
+' Layout helpers (spaced grid, not conveyor)
+CTRL -[hidden]down-> CMD
+CMD -[hidden]right-> UC
+UC -[hidden]down-> COM
+COM -[hidden]down-> NOTIF
+UC -[hidden]right-> SRV
+SRV -[hidden]up-> CNTR
+CNTR -[hidden]left-> ENT
+ENT -[hidden]down-> REQ
+CNTR -[hidden]right-> INF
+
+' Inheritance / implementation
+ResultT --|> Result
+ListingUseCaseMediator ..|> IListingUseCaseMediator
+ListingUseCaseMediator --|> BaseUseCaseMediator
+  ApplicationUseCaseMediator ..|> IApplicationUseCaseMediator
+  ApplicationUseCaseMediator --|> BaseUseCaseMediator
+  EfHousingRepository ..|> IHousingRepository
+  EfRentalApplicationRepository ..|> IRentalApplicationRepository
+  LogNotificationService ..|> INotificationService
+  ListingCommand ..|> ICommandT
+  ApplicationCommand ..|> ICommandT
+
+  ' Controller dependencies
+ListingsController -down-> CommandDispatcher
+ListingsController -right-> IListingUseCaseMediator
+ApplicationsController -down-> CommandDispatcher
+ApplicationsController -right-> IListingUseCaseMediator
+ApplicationsController -right-> IApplicationUseCaseMediator
+
+' Command dependencies
+CommandDispatcher -right-> ICommandT
+ListingCommand -right-> IListingUseCaseMediator
+ApplicationCommand -right-> IApplicationUseCaseMediator
+
+' UseCase dependencies
+BaseUseCaseMediator -down-> OperationValidationResult
+ListingUseCaseMediator -right-> HousingService
+ListingUseCaseMediator -down-> INotificationService
+ApplicationUseCaseMediator -right-> HousingService
+ApplicationUseCaseMediator -up-> IRentalApplicationRepository
+ApplicationUseCaseMediator -down-> INotificationService
+
+' Domain dependencies
+HousingService -up-> IHousingRepository
+ListingSearchCriteria -up-> RoomType
+HousingListing -down-> RoomType
+RentalApplication -down-> ApplicationStatus
+
+' Infrastructure dependencies
+EfHousingRepository -down-> AppDbContext
+EfRentalApplicationRepository -down-> AppDbContext
+AppDbContext -left-> HousingListing
+AppDbContext -left-> RentalApplication
+AppDbContext -left-> ApplicationStatus
+
+@enduml
+

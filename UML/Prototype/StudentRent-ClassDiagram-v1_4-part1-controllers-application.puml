@@ -1,0 +1,171 @@
+@startuml ClassDiagram-v1_4-part1-controllers-application
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title StudentRent v1.4 - Part 1 (Controllers + Application, Prototype refactor target)
+
+package "Controllers" {
+  class ListingsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+  }
+
+  class ApplicationsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    -_applicationMediator: IApplicationUseCaseMediator
+    --
+    +Apply(listingId, ct)
+    +Apply(model, ct)
+    +ApplyFromProfile(model, ct)
+    +List(listingId, ct)
+    -FillListingTitleAsync(listingId, ct)
+    -PopulateProfileViewDataAsync(ct)
+  }
+}
+
+package "Application.Commands" {
+  interface "ICommand<TResult>" as ICommandT {
+    +ExecuteAsync(ct): Task<Result<TResult>>
+  }
+
+  class CommandDispatcher {
+    +DispatchAsync<TResult>(command, ct): Task<Result<TResult>>
+  }
+
+  class GetListingDetailsCommand {
+    -_receiver: IListingUseCaseMediator
+    -_listingId: Guid
+  }
+
+  class CreateRentalApplicationCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_listingId: Guid
+    -_applicant: RentalApplication
+  }
+
+  class GetListingApplicationsCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_listingId: Guid
+  }
+
+  class CreateRentalApplicationProfileCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_prototype: IRentalApplicationPrototype
+  }
+
+  class GetRentalApplicationProfilesCommand {
+    -_receiver: IApplicationUseCaseMediator
+  }
+
+  class CreateRentalApplicationFromProfileCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_listingId: Guid
+    -_profileId: Guid
+  }
+}
+
+package "Application.UseCases" {
+  abstract class BaseUseCaseMediator {
+    #_notificationService: INotificationService
+    #ExecuteListingCreateTemplateAsync(listing, flow, ct)
+    #ExecuteApplyTemplateAsync(listingId, applicant, ct)
+  }
+
+  interface IListingUseCaseMediator {
+    +GetDetailsAsync(id, ct)
+  }
+
+  class ListingUseCaseMediator
+
+  interface IApplicationUseCaseMediator {
+    +ApplyAsync(listingId, applicant, ct)
+    +ApplyFromProfileAsync(listingId, profileId, ct)
+    +CreateProfileAsync(prototype, ct)
+    +ListProfilesAsync(ct)
+    +ListByListingIdAsync(listingId, ct)
+  }
+
+  class ApplicationUseCaseMediator {
+    -_housingService: HousingService
+    -_rentalApplicationRepository: IRentalApplicationRepository
+    -_prototypeRepository: IRentalApplicationProfileRepository
+  }
+}
+
+package "Application.Common" {
+  class Result
+  class "Result<T>" as ResultT
+  class ErrorCodes
+  class OperationValidationResult
+}
+
+package "Application.Notifications" {
+  interface INotificationService
+}
+
+package "ViewModels" {
+  class RentalApplicationCreateViewModel
+  class RentalApplicationFromProfileViewModel
+}
+
+package "Domain.Prototype" {
+  interface IRentalApplicationPrototype {
+    +Clone(): IRentalApplicationPrototype
+    +ToRentalApplication(listingId: Guid): RentalApplication
+  }
+}
+
+package "Domain.Entities (used in flow)" {
+  class RentalApplication
+  class RentalApplicationProfile
+}
+
+package "Domain.Services/Contracts (used in use cases)" {
+  class HousingService
+  interface IRentalApplicationRepository
+  interface IRentalApplicationProfileRepository
+}
+
+ResultT --|> Result
+ListingUseCaseMediator ..|> IListingUseCaseMediator
+ApplicationUseCaseMediator ..|> IApplicationUseCaseMediator
+ListingUseCaseMediator --|> BaseUseCaseMediator
+ApplicationUseCaseMediator --|> BaseUseCaseMediator
+
+CreateRentalApplicationProfileCommand ..|> ICommandT
+GetRentalApplicationProfilesCommand ..|> ICommandT
+CreateRentalApplicationFromProfileCommand ..|> ICommandT
+GetListingDetailsCommand ..|> ICommandT
+CreateRentalApplicationCommand ..|> ICommandT
+GetListingApplicationsCommand ..|> ICommandT
+
+ApplicationsController --> RentalApplicationCreateViewModel
+ApplicationsController --> RentalApplicationFromProfileViewModel
+ApplicationsController --> CommandDispatcher
+ApplicationsController --> IListingUseCaseMediator
+ApplicationsController --> IApplicationUseCaseMediator
+
+CommandDispatcher --> ICommandT
+CreateRentalApplicationProfileCommand --> IApplicationUseCaseMediator
+GetRentalApplicationProfilesCommand --> IApplicationUseCaseMediator
+CreateRentalApplicationFromProfileCommand --> IApplicationUseCaseMediator
+
+ApplicationUseCaseMediator --> HousingService
+ApplicationUseCaseMediator --> IRentalApplicationRepository
+ApplicationUseCaseMediator --> IRentalApplicationProfileRepository
+ApplicationUseCaseMediator --> INotificationService
+ApplicationUseCaseMediator --> IRentalApplicationPrototype
+BaseUseCaseMediator --> OperationValidationResult
+
+RentalApplicationProfile ..|> IRentalApplicationPrototype
+
+note right of ApplicationsController
+  v1.4 target:
+  same command flow as v1.3,
+  but Prototype accessed through interface.
+end note
+
+@enduml

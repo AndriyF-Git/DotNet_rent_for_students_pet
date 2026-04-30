@@ -1,0 +1,228 @@
+﻿@startuml StudentRent-TemplateMethod-ClassDiagram-v1_0
+' Template Method Pattern Integration - Class Diagram
+' Shows BaseUseCaseMediator with Template Method pattern and concrete Mediator implementations
+
+skinparam backgroundColor #FEFEFE
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #333333
+skinparam arrowColor #333333
+skinparam padding 10
+
+' Color scheme
+skinparam class {
+    BackgroundColor<<abstract>> #E1D5E7
+    BorderColor<<abstract>> #8B7BA8
+    BackgroundColor<<interface>> #D4E6F1
+    BorderColor<<interface>> #2874A6
+    BackgroundColor<<concrete>> #D5F4E6
+    BorderColor<<concrete>> #186A3B
+}
+
+package "Application.Common" {
+    interface Result<T> {
+        + Value: T?
+        + IsSuccess: bool
+        + ErrorCode: string?
+        + Message: string?
+        --
+        + {static} Success(value: T, message?: string): Result<T>
+        + {static} Failure(code: string, message: string): Result<T>
+    }
+    
+    class ErrorCodes {
+        + {static} ValidationError: string
+        + {static} NotFound: string
+        + {static} ListingNotAvailable: string
+        + {static} NotFoundOrNotDraft: string
+        + {static} Forbidden: string
+    }
+
+    class OperationValidationResult <<concrete>> {
+        + IsValid: bool
+        + ErrorCode: string?
+        + ErrorMessage: string?
+        --
+        + {static} Valid(): OperationValidationResult
+        + {static} Invalid(message: string, errorCode?: string): OperationValidationResult
+    }
+}
+
+package "Application.Notifications" {
+    interface INotificationService {
+        + NotifyAsync(message: string, ct: CancellationToken): Task
+    }
+}
+
+package "Application.UseCases" {
+    ' ============================================
+    ' TEMPLATE METHOD PATTERN - Core Abstraction
+    ' ============================================
+    abstract class BaseUseCaseMediator <<abstract>> {
+        # _notificationService: INotificationService
+        --
+        # BaseUseCaseMediator(notificationService: INotificationService)
+        --
+        # ValidationFailure<T>(validation: OperationValidationResult): Result<T>
+        # Success<T>(value: T, message?: string): Result<T>
+        # NotifyIfNeededAsync(notificationMessage?: string, ct: CancellationToken): Task
+        # Valid(): OperationValidationResult
+    }
+    
+    ' ============================================
+    ' CONCRETE MEDIATOR #1 - Listing Operations
+    ' ============================================
+    class ListingUseCaseMediator <<concrete>> {
+        - _housingService: HousingService
+        --
+        + ListingUseCaseMediator(
+        +     housingService: HousingService,
+        +     notificationService: INotificationService
+        + )
+        --
+        + CreateAsync(
+        +     listing: HousingListing,
+        +     ct: CancellationToken
+        + ): Task<Result<Guid>>
+        + CreateDraftAsync(
+        +     draft: HousingListing,
+        +     ct: CancellationToken
+        + ): Task<Result<Guid>>
+        --
+        - ValidateListing(listing: HousingListing): string?
+        - ValidateListingPayload(listing: HousingListing?, missingMessage: string): OperationValidationResult
+    }
+    
+    ' ============================================
+    ' CONCRETE MEDIATOR #2 - Application Operations
+    ' ============================================
+    class ApplicationUseCaseMediator <<concrete>> {
+        - _housingService: HousingService
+        - _rentalApplicationRepository: IRentalApplicationRepository
+        --
+        + ApplicationUseCaseMediator(
+        +     housingService: HousingService,
+        +     rentalApplicationRepository: IRentalApplicationRepository,
+        +     notificationService: INotificationService
+        + )
+        --
+        + ApplyAsync(
+        +     listingId: Guid,
+        +     applicant: RentalApplication,
+        +     ct: CancellationToken
+        + ): Task<Result<Guid>>
+        --
+        - ValidateApplicant(applicant: RentalApplication): string?
+        - ValidateApplyAsync(listingId: Guid, applicant: RentalApplication?, ct: CancellationToken): Task<OperationValidationResult>
+    }
+}
+
+package "Domain.Services" {
+    class HousingService {
+        - _repository: IHousingRepository
+        --
+        + HousingService(repository: IHousingRepository)
+        --
+        + GetListingDetailsAsync(
+        +     id: Guid,
+        +     ct: CancellationToken
+        + ): Task<HousingListing?>
+        + CreateListingAsync(
+        +     listing: HousingListing,
+        +     ct: CancellationToken
+        + ): Task<Guid>
+        + CreateListingDraftAsync(
+        +     draft: HousingListing,
+        +     ct: CancellationToken
+        + ): Task<Guid>
+    }
+}
+
+package "Domain.Contracts" {
+    interface IHousingRepository {
+        + AddAsync(entity: HousingListing, ct: CancellationToken): Task
+        + UpdateAsync(entity: HousingListing, ct: CancellationToken): Task
+        + GetByIdAsync(id: Guid, ct: CancellationToken): Task<HousingListing?>
+        + SaveChangesAsync(ct: CancellationToken): Task
+    }
+    
+    interface IRentalApplicationRepository {
+        + AddAsync(entity: RentalApplication, ct: CancellationToken): Task
+        + SaveChangesAsync(ct: CancellationToken): Task
+    }
+}
+
+package "Domain.Entities" {
+    class HousingListing {
+        + Id: Guid
+        + Title: string
+        + Description: string?
+        + City: string
+        + District: string?
+        + PricePerMonth: decimal
+        + RoomType: RoomType
+        + AreaSqm: int
+        + IsActive: bool
+        + CreatedAtUtc: DateTime
+    }
+    
+    class RentalApplication {
+        + Id: Guid
+        + ListingId: Guid
+        + ApplicantName: string
+        + Phone: string
+        + Email: string
+        + Message: string?
+        + Status: ApplicationStatus
+        + CreatedAtUtc: DateTime
+        --
+        + Approve(): void
+    }
+}
+
+' ============================================
+' RELATIONSHIPS
+' ============================================
+
+' Inheritance
+ListingUseCaseMediator --|> BaseUseCaseMediator : наслідує
+ApplicationUseCaseMediator --|> BaseUseCaseMediator : наслідує
+
+' Dependency Injection
+BaseUseCaseMediator --> INotificationService : використовує
+ListingUseCaseMediator --> HousingService : використовує
+ApplicationUseCaseMediator --> HousingService : використовує
+ApplicationUseCaseMediator --> IRentalApplicationRepository : використовує
+
+' Domain Services
+HousingService --> IHousingRepository : використовує
+
+' Common
+BaseUseCaseMediator --> OperationValidationResult : працює з
+BaseUseCaseMediator --> Result : повертає
+BaseUseCaseMediator --> ErrorCodes : використовує
+ListingUseCaseMediator --> HousingListing : працює з
+ApplicationUseCaseMediator --> RentalApplication : працює з
+
+' Legend
+note right of BaseUseCaseMediator
+  **TEMPLATE METHOD PATTERN**
+  
+  v1.1 (pragmatic template-flow)
+
+  BaseUseCaseMediator contains helpers:
+  - ValidationFailure()
+  - Success()
+  - NotifyIfNeededAsync()
+
+  Concrete mediator methods implement flow:
+  1. Validate
+  2. Execute
+  3. Notify
+  4. Return Result
+
+  Validation is unified through
+  OperationValidationResult
+end note
+
+@enduml
+

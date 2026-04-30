@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - RentService</title>
+    <style>
+        :root {
+            --bg: #f6f7fb;
+            --surface: #ffffff;
+            --text: #1d2433;
+            --muted: #5f6b82;
+            --accent: #0f766e;
+            --accent-strong: #115e59;
+            --line: #d8deea;
+            --shadow: 0 10px 25px rgba(24, 39, 75, 0.08);
+            --radius: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+        }
+
+        body {
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 15% 0%, rgba(15, 118, 110, 0.12), transparent 40%),
+                radial-gradient(circle at 95% 15%, rgba(17, 94, 89, 0.10), transparent 35%),
+                var(--bg);
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            max-width: 980px;
+            margin: 0 auto 20px auto;
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: var(--surface);
+            box-shadow: var(--shadow);
+        }
+
+        main {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .nav a {
+            margin-right: 12px;
+            font-weight: 600;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px;
+            margin: 12px 0;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 4px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        input, select, textarea {
+            width: 420px;
+            max-width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fcfcfe;
+            color: var(--text);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid rgba(15, 118, 110, 0.25);
+            border-color: var(--accent);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            color: var(--text);
+            transition: transform .12s ease, box-shadow .12s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(24, 39, 75, 0.12);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: #fff;
+            border-color: transparent;
+        }
+
+        .row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        @@media (max-width: 760px) {
+            body {
+                padding: 12px;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .nav a {
+                margin-right: 8px;
+            }
+
+            .btn {
+                margin-bottom: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <strong>RentService</strong>
+        <nav class="nav">
+            <a asp-controller="Listings" asp-action="Index">Оголошення</a>
+            <a asp-controller="Listings" asp-action="Create">Створити</a>
+            <a asp-controller="Reports" asp-action="DemandReport">Звіт попиту</a>
+        </nav>
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+</body>
+</html>

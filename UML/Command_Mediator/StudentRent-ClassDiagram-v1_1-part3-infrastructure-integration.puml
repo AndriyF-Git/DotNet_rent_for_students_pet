@@ -1,0 +1,81 @@
+@startuml
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title StudentRent v1.1 - Part 3 (Infrastructure + Integration)
+
+package "Application.UseCases" {
+  class ListingUseCaseMediator
+  class ApplicationUseCaseMediator
+}
+
+package "Application.Notifications" {
+  interface INotificationService
+}
+
+package "Domain.Contracts" {
+  interface IHousingRepository
+  interface IRentalApplicationRepository
+}
+
+package "Domain.Services" {
+  class HousingService
+}
+
+package "Domain.Entities" {
+  class HousingListing
+  class RentalApplication
+  enum ApplicationStatus
+}
+
+package "Infrastructure" {
+  class AppDbContext {
+    +HousingListings: DbSet<HousingListing>
+    +RentalApplications: DbSet<RentalApplication>
+    +OnModelCreating(modelBuilder): void
+  }
+
+  class EfHousingRepository {
+    -_db: AppDbContext
+    +GetByIdAsync(id, ct)
+    +SearchAsync(criteria, ct)
+    +AddAsync(listing, ct)
+    +UpdateAsync(listing, ct)
+    +SaveChangesAsync(ct)
+  }
+
+  class EfRentalApplicationRepository {
+    -_db: AppDbContext
+    +AddAsync(application, ct)
+    +GetByIdAsync(id, ct)
+    +ListByListingIdAsync(listingId, ct)
+    +SaveChangesAsync(ct)
+  }
+
+  class LogNotificationService {
+    -_logger: ILogger<LogNotificationService>
+    +NotifyAsync(message, ct): Task
+  }
+}
+
+EfHousingRepository ..|> IHousingRepository
+EfRentalApplicationRepository ..|> IRentalApplicationRepository
+LogNotificationService ..|> INotificationService
+
+ListingUseCaseMediator --> HousingService
+ListingUseCaseMediator --> INotificationService
+ApplicationUseCaseMediator --> HousingService
+ApplicationUseCaseMediator --> IRentalApplicationRepository
+ApplicationUseCaseMediator --> INotificationService
+
+HousingService --> IHousingRepository
+
+EfHousingRepository --> AppDbContext
+EfRentalApplicationRepository --> AppDbContext
+AppDbContext --> HousingListing
+AppDbContext --> RentalApplication
+AppDbContext --> ApplicationStatus
+
+@enduml

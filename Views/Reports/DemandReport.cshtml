@@ -1,0 +1,75 @@
+@using rent_for_students.ViewModels
+@model ListingDemandReportViewModel
+@{
+    ViewData["Title"] = "Звіт попиту на оголошення";
+}
+
+<h2>Звіт попиту на оголошення</h2>
+<p class="muted">Дані з View + обробка курсором SP. Тільки активні оголошення.</p>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="card" style="border-color:#e53e3e; color:#e53e3e;">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@error.ErrorMessage</div>
+        }
+    </div>
+}
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="muted">Немає даних для відображення.</p>
+}
+else
+{
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; background:#fff; border-radius:14px; box-shadow:var(--shadow); overflow:hidden;">
+            <thead>
+                <tr style="background:#f0faf9; color:var(--muted); font-size:.85rem; text-transform:uppercase; letter-spacing:.04em;">
+                    <th style="padding:10px 14px; text-align:left;">Оголошення</th>
+                    <th style="padding:10px 14px; text-align:left;">Місто</th>
+                    <th style="padding:10px 14px; text-align:left;">Тип</th>
+                    <th style="padding:10px 14px; text-align:right;">Ціна/міс</th>
+                    <th style="padding:10px 14px; text-align:center;">Всього</th>
+                    <th style="padding:10px 14px; text-align:center;">Pending</th>
+                    <th style="padding:10px 14px; text-align:center;">Approved</th>
+                    <th style="padding:10px 14px; text-align:center;">Rejected</th>
+                    <th style="padding:10px 14px; text-align:left;">Остання заявка</th>
+                    <th style="padding:10px 14px; text-align:center;">Попит</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    string badgeColor = row.DemandLevel switch
+                    {
+                        "Hot"    => "background:#fef3c7; color:#b45309;",
+                        "Active" => "background:#d1fae5; color:#065f46;",
+                        _        => "background:#f1f5f9; color:#64748b;"
+                    };
+
+                    <tr style="border-top:1px solid var(--line);">
+                        <td style="padding:10px 14px; font-weight:600;">@row.Title</td>
+                        <td style="padding:10px 14px;">@row.City</td>
+                        <td style="padding:10px 14px;">@row.RoomTypeName</td>
+                        <td style="padding:10px 14px; text-align:right;">@row.PricePerMonth.ToString("N0")</td>
+                        <td style="padding:10px 14px; text-align:center; font-weight:600;">@row.TotalApplications</td>
+                        <td style="padding:10px 14px; text-align:center; color:var(--muted);">@row.PendingCount</td>
+                        <td style="padding:10px 14px; text-align:center; color:#065f46;">@row.ApprovedCount</td>
+                        <td style="padding:10px 14px; text-align:center; color:#b91c1c;">@row.RejectedCount</td>
+                        <td style="padding:10px 14px; color:var(--muted); font-size:.9rem;">
+                            @(row.LastApplicationDate.HasValue ? row.LastApplicationDate.Value.ToString("dd.MM.yyyy") : "—")
+                        </td>
+                        <td style="padding:10px 14px; text-align:center;">
+                            <span style="padding:3px 10px; border-radius:999px; font-size:.8rem; font-weight:600; @badgeColor">
+                                @row.DemandLevel
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="muted" style="margin-top:10px; font-size:.85rem;">Всього оголошень: @Model.Rows.Count</p>
+}

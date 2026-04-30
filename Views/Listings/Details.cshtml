@@ -1,0 +1,61 @@
+﻿@using rent_for_students.ViewModels
+@using rent_for_students.Domain.Flyweight
+@inject RoomTypeFlyweightFactory RoomTypeFactory
+@model ListingDetailsViewModel
+@{
+    ViewData["Title"] = "Деталі";
+    var l = Model.Listing;
+    IRoomTypeFlyweight roomFlyweight = RoomTypeFactory.GetFlyweight(l.RoomType);
+}
+
+<h2>Деталі оголошення</h2>
+
+@if (TempData["ListingError"] is string listingError)
+{
+    <div style="color:#b00020;">@listingError</div>
+}
+@if (TempData["ListingMessage"] is string listingMessage)
+{
+    <div style="color:#0b6f2a;">@listingMessage</div>
+}
+
+<div class="card">
+    <div><strong>@l.Title</strong></div>
+    <div class="muted">@l.City @if(!string.IsNullOrWhiteSpace(l.District)){
+    <text>• @l.District</text>
+        }
+</div>
+    <div style="margin-top:8px;">Ціна: <strong>@l.PricePerMonth</strong> / міс</div>
+    <div>Тип: <span class="@roomFlyweight.CssClass">@roomFlyweight.DisplayName</span></div>
+    <div>@roomFlyweight.Description</div>
+    <div>Місткість: @roomFlyweight.TypicalCapacity ос.</div>
+    <div>Площа: @l.AreaSqm м²</div>
+    <div>Статус: @(l.IsActive ? "Published" : "Draft")</div>
+    <div class="muted" style="margin-top:8px;">Створено: @l.CreatedAtUtc.ToString("u")</div>
+
+    @if (!string.IsNullOrWhiteSpace(l.Description))
+    {
+        <div style="margin-top:12px;">
+            <strong>Опис</strong>
+            <div>@l.Description</div>
+        </div>
+    }
+</div>
+
+<p>
+    <a class="btn" asp-action="Index">Назад</a>
+    <a class="btn" asp-action="Create">Створити нове</a>
+    <a class="btn" asp-action="Edit" asp-route-id="@l.Id">Редагувати</a>
+    <a class="btn" asp-controller="Applications" asp-action="List" asp-route-listingId="@l.Id">Applications</a>
+    @if (l.IsActive)
+    {
+        <a class="btn btn-primary" asp-controller="Applications" asp-action="Apply" asp-route-listingId="@l.Id">Apply</a>
+    }
+</p>
+
+@if (!l.IsActive)
+{
+    <form method="post" asp-action="Publish" asp-route-id="@l.Id">
+        <button class="btn btn-primary" type="submit">Опублікувати</button>
+    </form>
+}

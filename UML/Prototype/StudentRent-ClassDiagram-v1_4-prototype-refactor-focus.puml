@@ -1,0 +1,136 @@
+@startuml ClassDiagram-v1_4-prototype-refactor-focus
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title StudentRent v1.4 - New Commands + Prototype Refactor Focus (target state)
+
+package "Controllers" {
+  class ApplicationsController {
+    +Apply(model, ct)
+    +ApplyFromProfile(model, ct)
+    -PopulateProfileViewDataAsync(ct)
+  }
+}
+
+package "Application.Commands" {
+  interface "ICommand<TResult>" as ICommandT {
+    +ExecuteAsync(ct): Task<Result<TResult>>
+  }
+
+  class CommandDispatcher {
+    +DispatchAsync<TResult>(command, ct): Task<Result<TResult>>
+  }
+
+  class CreateRentalApplicationProfileCommand <<new since v1.2>> {
+    -_receiver: IApplicationUseCaseMediator
+    -_prototype: IRentalApplicationPrototype
+  }
+
+  class GetRentalApplicationProfilesCommand <<new since v1.2>> {
+    -_receiver: IApplicationUseCaseMediator
+  }
+
+  class CreateRentalApplicationFromProfileCommand <<new since v1.2>> {
+    -_receiver: IApplicationUseCaseMediator
+    -_listingId: Guid
+    -_profileId: Guid
+  }
+}
+
+package "Application.UseCases" {
+  abstract class BaseUseCaseMediator {
+    #ExecuteApplyTemplateAsync(listingId, applicant, ct)
+  }
+
+  interface IApplicationUseCaseMediator {
+    +ApplyAsync(listingId, applicant, ct)
+    +CreateProfileAsync(prototype, ct)
+    +ListProfilesAsync(ct)
+    +ApplyFromProfileAsync(listingId, profileId, ct)
+  }
+
+  class ApplicationUseCaseMediator {
+    -_housingService: HousingService
+    -_rentalApplicationRepository: IRentalApplicationRepository
+    -_prototypeRepository: IRentalApplicationProfileRepository
+  }
+}
+
+package "Domain.Prototype" {
+  interface IRentalApplicationPrototype <<Prototype>> {
+    +Clone(): IRentalApplicationPrototype
+    +ToRentalApplication(listingId: Guid): RentalApplication
+  }
+}
+
+package "Domain.Entities" {
+  class RentalApplicationProfile <<ConcretePrototype>> {
+    +Clone(): IRentalApplicationPrototype
+    +ToRentalApplication(listingId: Guid): RentalApplication
+  }
+
+  class RentalApplication
+}
+
+package "Domain.Contracts" {
+  interface IRentalApplicationProfileRepository {
+    +GetByIdAsync(id, ct): Task<IRentalApplicationPrototype?>
+    +ListAsync(ct): Task<IReadOnlyList<IRentalApplicationPrototype>>
+    +AddAsync(prototype, ct)
+    +SaveChangesAsync(ct)
+  }
+
+  interface IRentalApplicationRepository
+}
+
+package "Domain.Services" {
+  class HousingService
+}
+
+package "Application.Common" {
+  class Result
+  class "Result<T>" as ResultT
+}
+
+ResultT --|> Result
+ApplicationUseCaseMediator --|> BaseUseCaseMediator
+ApplicationUseCaseMediator ..|> IApplicationUseCaseMediator
+
+CreateRentalApplicationProfileCommand ..|> ICommandT
+GetRentalApplicationProfilesCommand ..|> ICommandT
+CreateRentalApplicationFromProfileCommand ..|> ICommandT
+
+ApplicationsController --> CommandDispatcher
+ApplicationsController --> CreateRentalApplicationProfileCommand
+ApplicationsController --> GetRentalApplicationProfilesCommand
+ApplicationsController --> CreateRentalApplicationFromProfileCommand
+
+CommandDispatcher --> ICommandT
+CreateRentalApplicationProfileCommand --> IApplicationUseCaseMediator
+GetRentalApplicationProfilesCommand --> IApplicationUseCaseMediator
+CreateRentalApplicationFromProfileCommand --> IApplicationUseCaseMediator
+
+RentalApplicationProfile ..|> IRentalApplicationPrototype
+IRentalApplicationPrototype --> RentalApplication
+
+ApplicationUseCaseMediator --> IRentalApplicationProfileRepository
+ApplicationUseCaseMediator --> IRentalApplicationRepository
+ApplicationUseCaseMediator --> HousingService
+ApplicationUseCaseMediator --> IRentalApplicationPrototype
+
+note right of IRentalApplicationPrototype
+  Baseline Prototype shape:
+  client depends on interface,
+  concrete object clones itself.
+end note
+
+note bottom of ApplicationsController
+  Delta from v1.2:
+  - 3 new profile commands
+  - Prototype abstraction via interface
+  - ApplyFromProfile flow through prototype clone
+end note
+
+@enduml

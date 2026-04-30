@@ -1,0 +1,133 @@
+@startuml ClassDiagram-v1_5-flyweight-focus
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam ranksep 60
+skinparam nodesep 40
+top to bottom direction
+
+title StudentRent v1.5 - Flyweight Pattern Focus (RoomType rich metadata)
+
+package "Controllers (Client)" as CTRL {
+  class ListingsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    -_roomTypeFactory: RoomTypeFlyweightFactory
+  }
+
+  class ApplicationsController {
+    -_dispatcher: CommandDispatcher
+    -_applicationMediator: IApplicationUseCaseMediator
+  }
+}
+
+package "Domain.Flyweight" as FLY {
+  interface IRoomTypeFlyweight <<Flyweight>> {
+    +Type: RoomType
+    +DisplayName: string
+    +Description: string
+    +TypicalCapacity: int
+    +CssClass: string
+  }
+
+  class RoomTypeFlyweight <<ConcreteFlyweight>> {
+    -_type: RoomType
+    -_displayName: string
+    -_description: string
+    -_typicalCapacity: int
+    -_cssClass: string
+    +Type: RoomType
+    +DisplayName: string
+    +Description: string
+    +TypicalCapacity: int
+    +CssClass: string
+  }
+
+  class RoomTypeFlyweightFactory <<FlyweightFactory>> {
+    -_cache: Dictionary<RoomType, IRoomTypeFlyweight>
+    +GetFlyweight(type: RoomType): IRoomTypeFlyweight
+    +GetAll(): IReadOnlyDictionary<RoomType, IRoomTypeFlyweight>
+  }
+}
+
+package "Domain.Entities" as ENT {
+  class HousingListing <<Context>> {
+    +Id: Guid
+    +Title: string
+    +Description: string
+    +City: string
+    +District: string
+    +PricePerMonth: decimal
+    +RoomType: RoomType
+    +AreaSqm: int
+    +IsActive: bool
+    +CreatedAtUtc: DateTime
+  }
+
+  enum RoomType {
+    Studio
+    OneBedroom
+    TwoBedroom
+    ThreeBedroom
+  }
+}
+
+package "ViewModels" as VM {
+  class ListingCreateViewModel {
+    +Title: string
+    +City: string
+    +PricePerMonth: decimal
+    +RoomType: RoomType
+    +AreaSqm: int
+  }
+
+  class ListingFilterViewModel {
+    +City: string?
+    +RoomType: RoomType?
+  }
+}
+
+' Inheritance / implementation
+RoomTypeFlyweight ..|> IRoomTypeFlyweight
+
+' Factory manages flyweights
+RoomTypeFlyweightFactory --> IRoomTypeFlyweight : creates & caches
+RoomTypeFlyweightFactory --> RoomType : keyed by
+
+' Client uses Factory
+ListingsController --> RoomTypeFlyweightFactory : injects (Singleton)
+ListingsController --> ListingCreateViewModel
+ListingsController --> ListingFilterViewModel
+
+' Context holds extrinsic state + enum key
+HousingListing --> RoomType : stores (extrinsic context)
+
+' Flyweight holds intrinsic state for RoomType
+RoomTypeFlyweight --> RoomType : enriches with metadata
+
+note right of IRoomTypeFlyweight
+  **Intrinsic state** (shared, immutable):
+  DisplayName, Description,
+  TypicalCapacity, CssClass.
+  ----
+  Shared across all HousingListings
+  with the same RoomType.
+end note
+
+note bottom of HousingListing
+  **Extrinsic state** (unique per listing):
+  Id, Title, City, Price, Area, etc.
+  ----
+  RoomType enum key links to
+  the corresponding Flyweight.
+end note
+
+note right of RoomTypeFlyweightFactory
+  Singleton in DI container.
+  Pre-populates cache for all
+  4 RoomType values at startup.
+  GetFlyweight() returns cached instance.
+end note
+
+@enduml

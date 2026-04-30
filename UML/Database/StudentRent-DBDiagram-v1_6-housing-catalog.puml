@@ -1,0 +1,79 @@
+@startuml StudentRent-DBDiagram-v1_6-housing-catalog
+' PROMPT v1.6: DB Diagram 1 — Housing Catalog Layer
+' Business layer: landlords publish listings, students apply, admin moderates
+
+title DB Diagram 1: Housing Catalog Layer (v1.6)
+
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+skinparam class {
+    BackgroundColor<<table>> #E8F5E9
+    BorderColor<<table>> #388E3C
+    BackgroundColor<<enum>> #FFF3E0
+    BorderColor<<enum>> #F57C00
+}
+
+package "Housing Catalog Layer" {
+
+    entity "HousingListings" <<table>> {
+        **Id** : uniqueidentifier <<PK>>
+        --
+        Title : nvarchar(120) <<NOT NULL>>
+        Description : nvarchar(2000)
+        City : nvarchar(120) <<NOT NULL>>
+        District : nvarchar(120)
+        PricePerMonth : decimal(12,2) <<NOT NULL>>
+        RoomType : int <<NOT NULL, FK enum>>
+        AreaSqm : int <<NOT NULL>>
+        IsActive : bit <<NOT NULL>>
+        CreatedAtUtc : datetime2 <<NOT NULL>>
+        --
+        <<IX>> IX_HousingListings_City (City)
+        <<IX>> IX_HousingListings_PricePerMonth (PricePerMonth)
+        <<IX>> IX_HousingListings_IsActive (IsActive)
+    }
+
+    entity "RentalApplications" <<table>> {
+        **Id** : uniqueidentifier <<PK>>
+        --
+        ListingId : uniqueidentifier <<FK, NOT NULL>>
+        ApplicantName : nvarchar(120) <<NOT NULL>>
+        Phone : nvarchar(40) <<NOT NULL>>
+        Email : nvarchar(254) <<NOT NULL>>
+        Message : nvarchar(2000)
+        Status : int <<NOT NULL, enum>>
+        CreatedAtUtc : datetime2 <<NOT NULL>>
+        --
+        <<IX>> IX_RentalApplications_ListingId (ListingId)
+        <<IX>> IX_RentalApplications_CreatedAtUtc (CreatedAtUtc)
+    }
+
+    enum "RoomType" <<enum>> {
+        0 = Studio
+        1 = OneBedroom
+        2 = TwoBedroom
+        3 = ThreeBedroom
+    }
+
+    enum "ApplicationStatus" <<enum>> {
+        0 = Pending
+        1 = Approved
+        2 = Rejected
+    }
+}
+
+HousingListings ||--o{ RentalApplications : "ListingId\n(CASCADE DELETE)"
+HousingListings ..> RoomType : "RoomType (int)"
+RentalApplications ..> ApplicationStatus : "Status (int)"
+
+note bottom of RentalApplications
+    **Layer collision:** applicant data
+    (Name, Phone, Email, Message)
+    originates from Student Profile Layer
+    via Prototype pattern (v1.4)
+end note
+
+@enduml

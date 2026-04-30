@@ -1,0 +1,70 @@
+@startuml StudentRent-DBDiagram-v1_6-student-profile
+' PROMPT v1.6: DB Diagram 2 — Student Profile Layer
+' Business layer: students save reusable application profiles (Prototype source)
+
+title DB Diagram 2: Student Profile Layer (v1.6)
+
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+skinparam class {
+    BackgroundColor<<table>> #E3F2FD
+    BorderColor<<table>> #1565C0
+    BackgroundColor<<ghost>> #F5F5F5
+    BorderColor<<ghost>> #BDBDBD
+}
+
+package "Student Profile Layer" {
+
+    entity "RentalApplicationProfiles" <<table>> {
+        **Id** : uniqueidentifier <<PK>>
+        --
+        ProfileName : nvarchar(80) <<NOT NULL>>
+        ApplicantName : nvarchar(120) <<NOT NULL>>
+        Phone : nvarchar(40) <<NOT NULL>>
+        Email : nvarchar(254) <<NOT NULL>>
+        Message : nvarchar(2000)
+        CreatedAtUtc : datetime2 <<NOT NULL>>
+        UpdatedAtUtc : datetime2 <<NOT NULL>>
+        --
+        <<IX>> IX_RentalApplicationProfiles_ProfileName (ProfileName)
+        <<IX>> IX_RentalApplicationProfiles_UpdatedAtUtc (UpdatedAtUtc)
+    }
+}
+
+package "Housing Catalog Layer (reference)" <<ghost>> {
+
+    entity "RentalApplications" <<ghost>> {
+        **Id** : uniqueidentifier <<PK>>
+        --
+        ApplicantName : nvarchar(120)
+        Phone : nvarchar(40)
+        Email : nvarchar(254)
+        Message : nvarchar(2000)
+        ...
+    }
+}
+
+RentalApplicationProfiles ..> RentalApplications : "Prototype Clone()\n(no FK, data flow\nvia application layer)"
+
+note bottom of RentalApplicationProfiles
+    **Prototype source (v1.4):**
+    Profile data is cloned into
+    RentalApplications at runtime.
+    No database-level FK exists —
+    the relationship is enforced
+    by application logic.
+end note
+
+note right of RentalApplicationProfiles
+    **CRUD via SP:**
+    sp_RentalApplicationProfiles_Create
+    sp_RentalApplicationProfiles_GetById
+    sp_RentalApplicationProfiles_GetAll
+    sp_RentalApplicationProfiles_Update
+    sp_RentalApplicationProfiles_Delete
+end note
+
+@enduml

@@ -1,0 +1,140 @@
+@startuml ComponentDiagram-v1_5
+skinparam packageStyle rectangle
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam ranksep 50
+skinparam nodesep 40
+top to bottom direction
+
+title StudentRent Component Diagram v1.5 (Command + Mediator + Template Method + Prototype + Flyweight)
+
+package "Presentation" {
+  [ListingsController] as LC
+  [ApplicationsController] as AC
+  [ViewModels] as VM
+  [Views (Razor)] as VW
+}
+
+package "Application" {
+  [CommandDispatcher] as CD
+  [Listing Commands] as LCMD
+  [Application Commands] as ACMD
+
+  package "UseCases (Mediator + Template Method)" {
+    [BaseUseCaseMediator\n<<Template Method>>] as BASE
+    [ListingUseCaseMediator] as LM
+    [ApplicationUseCaseMediator] as AM
+  }
+
+  [INotificationService] as NOTIF
+  [Result / ErrorCodes] as RES
+}
+
+package "Domain" {
+  [HousingService] as HS
+  [HousingListing\n+ RentalApplication\n+ RentalApplicationProfile] as ENTITIES
+  [RoomType + ApplicationStatus\n<<Enums>>] as ENUMS
+
+  package "Contracts" {
+    [IHousingRepository] as IHR
+    [IRentalApplicationRepository] as IRAR
+    [IRentalApplicationProfileRepository] as IRPR
+  }
+
+  package "Prototype" {
+    [IRentalApplicationPrototype\n<<Prototype>>] as PROTO
+  }
+
+  package "Flyweight" {
+    [IRoomTypeFlyweight\n<<Flyweight>>] as IFW
+    [RoomTypeFlyweight\n<<ConcreteFlyweight>>] as CFW
+    [RoomTypeFlyweightFactory\n<<FlyweightFactory>>] as FWF
+  }
+}
+
+package "Infrastructure" {
+  [AppDbContext\n(SQLite)] as DB
+  [EfHousingRepository] as EHR
+  [EfRentalApplicationRepository] as ERAR
+  [EfRentalApplicationProfileRepository] as ERPR
+  [LogNotificationService] as LNS
+}
+
+package "Composition Root" {
+  [Program.cs\n(DI Registration)] as PROG
+}
+
+' === Presentation layer ===
+LC --> CD
+LC --> LM : uses
+LC -right-> FWF : injects (Singleton)
+LC --> VM
+AC --> CD
+AC --> LM : uses
+AC --> AM : uses
+AC --> VM
+VW --> VM
+
+' === Application layer ===
+CD --> LCMD
+CD --> ACMD
+LCMD --> LM
+ACMD --> AM
+LM --|> BASE
+AM --|> BASE
+BASE --> NOTIF
+BASE --> RES
+
+' === UseCases -> Domain ===
+LM --> HS
+AM --> HS
+AM --> IRAR
+AM --> IRPR
+AM --> PROTO
+
+' === Domain internals ===
+HS --> IHR
+ENTITIES --> ENUMS
+PROTO --> ENTITIES : builds RentalApplication
+FWF --> IFW : creates & caches
+CFW ..|> IFW
+IFW --> ENUMS : enriches RoomType
+
+' === Infrastructure implements Contracts ===
+EHR ..|> IHR
+ERAR ..|> IRAR
+ERPR ..|> IRPR
+LNS ..|> NOTIF
+EHR --> DB
+ERAR --> DB
+ERPR --> DB
+
+' === Composition Root wires everything ===
+PROG --> DB
+PROG --> EHR
+PROG --> ERAR
+PROG --> ERPR
+PROG --> LM
+PROG --> AM
+PROG --> FWF : Singleton
+
+note right of FWF
+  **New in v1.5**:
+  Flyweight pattern for RoomType.
+  Factory registered as Singleton,
+  injected directly into Controllers.
+end note
+
+note bottom of BASE
+  Template Method defines
+  skeleton algorithm for
+  Listing create & Apply flows.
+end note
+
+note right of PROTO
+  Prototype pattern (v1.4):
+  Clone() + ToRentalApplication()
+  for reusable application profiles.
+end note
+
+@enduml

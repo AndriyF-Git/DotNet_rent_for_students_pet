@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="rent_for_students.csproj" />
+  <Project Path="tests/rent_for_students.Tests/rent_for_students.Tests.csproj" />
+</Solution>

@@ -1,0 +1,285 @@
+@startuml ClassDiagram-core-v1_4
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam ranksep 70
+skinparam nodesep 50
+top to bottom direction
+
+title StudentRent Class Diagram core v1.4 (Command + Mediator + Template Method + Prototype interface target)
+
+package "Controllers" as CTRL {
+  class ListingsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+  }
+
+  class ApplicationsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    -_applicationMediator: IApplicationUseCaseMediator
+  }
+}
+
+package "Commands" as CMD {
+  interface "ICommand<TResult>" as ICommandT
+  class CommandDispatcher
+
+  class ListingCommand {
+    -_receiver: IListingUseCaseMediator
+  }
+
+  class ApplicationCommand {
+    -_receiver: IApplicationUseCaseMediator
+  }
+
+  class CreateRentalApplicationProfileCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_prototype: IRentalApplicationPrototype
+  }
+
+  class GetRentalApplicationProfilesCommand {
+    -_receiver: IApplicationUseCaseMediator
+  }
+
+  class CreateRentalApplicationFromProfileCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_listingId: Guid
+    -_profileId: Guid
+  }
+}
+
+package "UseCases" as UC {
+  abstract class BaseUseCaseMediator {
+    #_notificationService: INotificationService
+    #ValidationFailure<T>(validation: OperationValidationResult): Result<T>
+    #Success<T>(value: T, message?: string): Result<T>
+    #NotifyIfNeededAsync(message?: string, ct: CancellationToken): Task
+    #ExecuteListingCreateTemplateAsync(listing: HousingListing, flow, ct): Task<Result<Guid>>
+    #ExecuteApplyTemplateAsync(listingId: Guid, applicant: RentalApplication, ct): Task<Result<Guid>>
+  }
+
+  interface IListingUseCaseMediator
+  class ListingUseCaseMediator {
+    -_housingService: HousingService
+  }
+
+  interface IApplicationUseCaseMediator {
+    +ApplyAsync(listingId: Guid, applicant: RentalApplication, ct): Task<Result<Guid>>
+    +ApplyFromProfileAsync(listingId: Guid, profileId: Guid, ct): Task<Result<Guid>>
+    +CreateProfileAsync(prototype: IRentalApplicationPrototype, ct): Task<Result<Guid>>
+    +ListProfilesAsync(ct): Task<Result<IReadOnlyList<IRentalApplicationPrototype>>>
+    +ListByListingIdAsync(listingId: Guid, ct): Task<Result<IReadOnlyList<RentalApplication>>>
+  }
+
+  class ApplicationUseCaseMediator {
+    -_housingService: HousingService
+    -_rentalApplicationRepository: IRentalApplicationRepository
+    -_prototypeRepository: IRentalApplicationProfileRepository
+  }
+}
+
+package "Common" as COM {
+  class Result {
+    +IsSuccess: bool
+    +ErrorCode: string
+    +Message: string
+  }
+
+  class "Result<T>" as ResultT {
+    +Value: T
+  }
+
+  class ErrorCodes
+
+  class OperationValidationResult {
+    +IsValid: bool
+    +ErrorCode: string?
+    +ErrorMessage: string?
+  }
+}
+
+package "Notifications" as NOTIF {
+  interface INotificationService
+}
+
+package "Prototype" as PROTO {
+  interface IRentalApplicationPrototype <<Prototype>> {
+    +Clone(): IRentalApplicationPrototype
+    +ToRentalApplication(listingId: Guid): RentalApplication
+  }
+}
+
+package "Entities" as ENT {
+  class HousingListing {
+    +Id: Guid
+    +Title: string
+    +Description: string
+    +City: string
+    +District: string
+    +PricePerMonth: decimal
+    +RoomType: RoomType
+    +AreaSqm: int
+    +IsActive: bool
+    +CreatedAtUtc: DateTime
+  }
+
+  class RentalApplication {
+    +Id: Guid
+    +ListingId: Guid
+    +ApplicantName: string
+    +Phone: string
+    +Email: string
+    +Message: string
+    +Status: ApplicationStatus
+    +CreatedAtUtc: DateTime
+  }
+
+  class RentalApplicationProfile <<ConcretePrototype>> {
+    +Id: Guid
+    +ProfileName: string
+    +ApplicantName: string
+    +Phone: string
+    +Email: string
+    +Message: string
+    +CreatedAtUtc: DateTime
+    +UpdatedAtUtc: DateTime
+    +Clone(): IRentalApplicationPrototype
+    +ToRentalApplication(listingId: Guid): RentalApplication
+  }
+
+  enum RoomType {
+    Studio
+    OneBedroom
+    TwoBedroom
+    ThreeBedroom
+  }
+
+  enum ApplicationStatus {
+    Pending
+    Approved
+    Rejected
+  }
+}
+
+package "Requests" as REQ {
+  class ListingSearchCriteria
+}
+
+package "Contracts" as CNTR {
+  interface IHousingRepository
+  interface IRentalApplicationRepository
+  interface IRentalApplicationProfileRepository {
+    +GetByIdAsync(id, ct): Task<IRentalApplicationPrototype?>
+    +ListAsync(ct): Task<IReadOnlyList<IRentalApplicationPrototype>>
+  }
+}
+
+package "Services" as SRV {
+  class HousingService
+}
+
+package "Infrastructure" as INF {
+  class AppDbContext {
+    +HousingListings: DbSet<HousingListing>
+    +RentalApplications: DbSet<RentalApplication>
+    +RentalApplicationProfiles: DbSet<RentalApplicationProfile>
+  }
+
+  class EfHousingRepository {
+    -_db: AppDbContext
+  }
+
+  class EfRentalApplicationRepository {
+    -_db: AppDbContext
+  }
+
+  class EfRentalApplicationProfileRepository {
+    -_db: AppDbContext
+    +GetByIdAsync(id, ct): Task<IRentalApplicationPrototype?>
+    +ListAsync(ct): Task<IReadOnlyList<IRentalApplicationPrototype>>
+  }
+
+  class LogNotificationService {
+    -_logger: ILogger<LogNotificationService>
+  }
+}
+
+' Layout helpers
+CTRL -[hidden]down-> CMD
+CMD -[hidden]right-> UC
+UC -[hidden]down-> COM
+COM -[hidden]down-> NOTIF
+UC -[hidden]right-> SRV
+SRV -[hidden]up-> CNTR
+CNTR -[hidden]left-> PROTO
+PROTO -[hidden]left-> ENT
+ENT -[hidden]down-> REQ
+CNTR -[hidden]right-> INF
+
+' Inheritance / implementation
+ResultT --|> Result
+ListingUseCaseMediator ..|> IListingUseCaseMediator
+ApplicationUseCaseMediator ..|> IApplicationUseCaseMediator
+ListingUseCaseMediator --|> BaseUseCaseMediator
+ApplicationUseCaseMediator --|> BaseUseCaseMediator
+EfHousingRepository ..|> IHousingRepository
+EfRentalApplicationRepository ..|> IRentalApplicationRepository
+EfRentalApplicationProfileRepository ..|> IRentalApplicationProfileRepository
+LogNotificationService ..|> INotificationService
+ListingCommand ..|> ICommandT
+ApplicationCommand ..|> ICommandT
+CreateRentalApplicationProfileCommand ..|> ICommandT
+GetRentalApplicationProfilesCommand ..|> ICommandT
+CreateRentalApplicationFromProfileCommand ..|> ICommandT
+RentalApplicationProfile ..|> IRentalApplicationPrototype
+
+' Controller dependencies
+ListingsController -down-> CommandDispatcher
+ListingsController -right-> IListingUseCaseMediator
+ApplicationsController -down-> CommandDispatcher
+ApplicationsController -right-> IListingUseCaseMediator
+ApplicationsController -right-> IApplicationUseCaseMediator
+
+' Command dependencies
+CommandDispatcher -right-> ICommandT
+ListingCommand -right-> IListingUseCaseMediator
+ApplicationCommand -right-> IApplicationUseCaseMediator
+CreateRentalApplicationProfileCommand -right-> IApplicationUseCaseMediator
+GetRentalApplicationProfilesCommand -right-> IApplicationUseCaseMediator
+CreateRentalApplicationFromProfileCommand -right-> IApplicationUseCaseMediator
+
+' UseCase dependencies
+BaseUseCaseMediator -down-> OperationValidationResult
+ListingUseCaseMediator -right-> HousingService
+ListingUseCaseMediator -down-> INotificationService
+ApplicationUseCaseMediator -right-> HousingService
+ApplicationUseCaseMediator -up-> IRentalApplicationRepository
+ApplicationUseCaseMediator -up-> IRentalApplicationProfileRepository
+ApplicationUseCaseMediator -left-> IRentalApplicationPrototype
+ApplicationUseCaseMediator -down-> INotificationService
+
+' Domain dependencies
+HousingService -up-> IHousingRepository
+ListingSearchCriteria -up-> RoomType
+HousingListing -down-> RoomType
+RentalApplication -down-> ApplicationStatus
+IRentalApplicationPrototype -left-> RentalApplication : builds target
+
+' Infrastructure dependencies
+EfHousingRepository -down-> AppDbContext
+EfRentalApplicationRepository -down-> AppDbContext
+EfRentalApplicationProfileRepository -down-> AppDbContext
+AppDbContext -left-> HousingListing
+AppDbContext -left-> RentalApplication
+AppDbContext -left-> RentalApplicationProfile
+AppDbContext -left-> ApplicationStatus
+
+note right of IRentalApplicationPrototype
+  Baseline Prototype target for v1.4:
+  client depends on interface,
+  concrete prototype clones itself.
+end note
+
+@enduml

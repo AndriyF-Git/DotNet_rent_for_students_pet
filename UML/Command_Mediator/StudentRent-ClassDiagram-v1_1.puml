@@ -1,0 +1,311 @@
+@startuml
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title StudentRent Class Diagram v1.2
+
+package "Presentation (MVC)" {
+  class ListingsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    --
+    +Index(filter, ct): Task<IActionResult>
+    +Details(id, ct): Task<IActionResult>
+    +Create(): IActionResult
+    +Create(form, ct): Task<IActionResult>
+    +CreateDraft(): IActionResult
+    +CreateDraft(form, ct): Task<IActionResult>
+    +Edit(id, ct): Task<IActionResult>
+    +Edit(id, form, ct): Task<IActionResult>
+    +Publish(id, ct): Task<IActionResult>
+  }
+
+  class ApplicationsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    -_applicationMediator: IApplicationUseCaseMediator
+    --
+    +Apply(listingId, ct): Task<IActionResult>
+    +Apply(model, ct): Task<IActionResult>
+    +List(listingId, ct): Task<IActionResult>
+    -FillListingTitleAsync(listingId, ct): Task
+  }
+}
+
+package "Application.Commands" {
+  interface "ICommand<TResult>" as ICommandT {
+    +ExecuteAsync(ct): Task<Result<TResult>>
+  }
+
+  class CommandDispatcher {
+    +DispatchAsync<TResult>(command, ct): Task<Result<TResult>>
+  }
+
+  class SearchListingsCommand {
+    -_receiver: IListingUseCaseMediator
+    -_criteria: ListingSearchCriteria
+    +ExecuteAsync(ct): Task<Result<IReadOnlyList<HousingListing>>>
+  }
+
+  class GetListingDetailsCommand {
+    -_receiver: IListingUseCaseMediator
+    -_listingId: Guid
+    +ExecuteAsync(ct): Task<Result<HousingListing>>
+  }
+
+  class CreateListingCommand {
+    -_receiver: IListingUseCaseMediator
+    -_listing: HousingListing
+    +ExecuteAsync(ct): Task<Result<Guid>>
+  }
+
+  class CreateListingDraftCommand {
+    -_receiver: IListingUseCaseMediator
+    -_draft: HousingListing
+    +ExecuteAsync(ct): Task<Result<Guid>>
+  }
+
+  class UpdateListingDraftCommand {
+    -_receiver: IListingUseCaseMediator
+    -_listingId: Guid
+    -_draft: HousingListing
+    +ExecuteAsync(ct): Task<Result<bool>>
+  }
+
+  class PublishListingCommand {
+    -_receiver: IListingUseCaseMediator
+    -_listingId: Guid
+    +ExecuteAsync(ct): Task<Result<bool>>
+  }
+
+  class UpdateListingCommand {
+    -_receiver: IListingUseCaseMediator
+    -_listingId: Guid
+    -_listing: HousingListing
+    +ExecuteAsync(ct): Task<Result<bool>>
+  }
+
+  class CreateRentalApplicationCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_listingId: Guid
+    -_applicant: RentalApplication
+    +ExecuteAsync(ct): Task<Result<Guid>>
+  }
+
+  class GetListingApplicationsCommand {
+    -_receiver: IApplicationUseCaseMediator
+    -_listingId: Guid
+    +ExecuteAsync(ct): Task<Result<IReadOnlyList<RentalApplication>>>
+  }
+}
+
+package "Application.UseCases" {
+  interface IListingUseCaseMediator {
+    +SearchListingsAsync(criteria, ct)
+    +GetDetailsAsync(id, ct)
+    +CreateAsync(listing, ct)
+    +CreateDraftAsync(draft, ct)
+    +UpdateDraftAsync(id, draft, ct)
+    +PublishAsync(id, ct)
+    +UpdateAsync(id, listing, ct)
+  }
+  class ListingUseCaseMediator
+
+  interface IApplicationUseCaseMediator {
+    +ApplyAsync(listingId, applicant, ct)
+    +ListByListingIdAsync(listingId, ct)
+  }
+  class ApplicationUseCaseMediator
+}
+
+package "Application.Common" {
+  class Result {
+    +IsSuccess: bool
+    +ErrorCode: string
+    +Message: string
+  }
+  class "Result<T>" as ResultT {
+    +Value: T
+  }
+  class ErrorCodes
+}
+
+package "Application.Notifications" {
+  interface INotificationService {
+    +NotifyAsync(message, ct)
+  }
+}
+
+package "Domain.Entities" {
+  class HousingListing {
+    +Id: Guid
+    +Title: string
+    +Description: string
+    +City: string
+    +District: string
+    +PricePerMonth: decimal
+    +RoomType: RoomType
+    +AreaSqm: int
+    +IsActive: bool
+    +CreatedAtUtc: DateTime
+  }
+
+  class RentalApplication {
+    +Id: Guid
+    +ListingId: Guid
+    +ApplicantName: string
+    +Phone: string
+    +Email: string
+    +Message: string
+    +Status: ApplicationStatus
+    +CreatedAtUtc: DateTime
+    +Approve()
+  }
+
+  enum RoomType {
+    Studio
+    OneBedroom
+    TwoBedroom
+    ThreeBedroom
+  }
+
+  enum ApplicationStatus {
+    Pending
+    Approved
+    Rejected
+  }
+}
+
+package "Domain.Requests" {
+  class ListingSearchCriteria
+}
+
+package "Domain.Contracts" {
+  interface IHousingRepository {
+    +GetByIdAsync(id, ct)
+    +SearchAsync(criteria, ct)
+    +AddAsync(listing, ct)
+    +UpdateAsync(listing, ct)
+    +SaveChangesAsync(ct)
+  }
+
+  interface IRentalApplicationRepository {
+    +AddAsync(app, ct)
+    +GetByIdAsync(id, ct)
+    +ListByListingIdAsync(listingId, ct)
+    +SaveChangesAsync(ct)
+  }
+}
+
+package "Domain.Services" {
+  class HousingService {
+    +SearchListingsAsync(criteria, ct)
+    +GetListingDetailsAsync(id, ct)
+    +CreateListingAsync(listing, ct)
+    +CreateListingDraftAsync(draft, ct)
+    +UpdateListingDraftAsync(id, draft, ct)
+    +PublishListingAsync(id, ct)
+    +UpdateListingAsync(id, listing, ct)
+  }
+}
+
+package "Infrastructure" {
+  class AppDbContext {
+    +HousingListings: DbSet<HousingListing>
+    +RentalApplications: DbSet<RentalApplication>
+    +OnModelCreating(modelBuilder): void
+  }
+  class EfHousingRepository {
+    -_db: AppDbContext
+    +GetByIdAsync(id, ct)
+    +SearchAsync(criteria, ct)
+    +AddAsync(listing, ct)
+    +UpdateAsync(listing, ct)
+    +SaveChangesAsync(ct)
+  }
+  class EfRentalApplicationRepository {
+    -_db: AppDbContext
+    +AddAsync(application, ct)
+    +GetByIdAsync(id, ct)
+    +ListByListingIdAsync(listingId, ct)
+    +SaveChangesAsync(ct)
+  }
+  class LogNotificationService {
+    -_logger: ILogger<LogNotificationService>
+    +NotifyAsync(message, ct): Task
+  }
+}
+
+' Layout guides for Application block:
+"Application.UseCases" -[hidden]right-> "Application.Commands"
+"Application.UseCases" -[hidden]down-> "Application.Common"
+"Application.Common" -[hidden]down-> "Application.Notifications"
+
+' Global layout guides:
+"Presentation (MVC)" -[hidden]right-> "Application.UseCases"
+"Application" -[hidden]right-> "Infrastructure"
+"Infrastructure" -[hidden]right-> "Domain.Entities"
+"Domain.Entities" -[hidden]down-> "Domain.Contracts"
+"Domain.Contracts" -[hidden]down-> "Domain.Services"
+"Domain.Services" -[hidden]down-> "Domain.Requests"
+
+' Inheritance / implementation
+ResultT --|> Result
+ListingUseCaseMediator ..|> IListingUseCaseMediator
+ApplicationUseCaseMediator ..|> IApplicationUseCaseMediator
+EfHousingRepository ..|> IHousingRepository
+EfRentalApplicationRepository ..|> IRentalApplicationRepository
+LogNotificationService ..|> INotificationService
+
+SearchListingsCommand ..|> ICommandT
+GetListingDetailsCommand ..|> ICommandT
+CreateListingCommand ..|> ICommandT
+CreateListingDraftCommand ..|> ICommandT
+UpdateListingDraftCommand ..|> ICommandT
+PublishListingCommand ..|> ICommandT
+UpdateListingCommand ..|> ICommandT
+CreateRentalApplicationCommand ..|> ICommandT
+GetListingApplicationsCommand ..|> ICommandT
+
+' Presentation dependencies
+ListingsController --> CommandDispatcher
+ListingsController --> IListingUseCaseMediator
+ApplicationsController --> CommandDispatcher
+ApplicationsController --> IListingUseCaseMediator
+ApplicationsController --> IApplicationUseCaseMediator
+
+' Command dependencies
+SearchListingsCommand --> IListingUseCaseMediator
+GetListingDetailsCommand --> IListingUseCaseMediator
+CreateListingCommand --> IListingUseCaseMediator
+CreateListingDraftCommand --> IListingUseCaseMediator
+UpdateListingDraftCommand --> IListingUseCaseMediator
+PublishListingCommand --> IListingUseCaseMediator
+UpdateListingCommand --> IListingUseCaseMediator
+CreateRentalApplicationCommand --> IApplicationUseCaseMediator
+GetListingApplicationsCommand --> IApplicationUseCaseMediator
+CommandDispatcher --> ICommandT
+
+' Use case dependencies
+ListingUseCaseMediator --> HousingService
+ListingUseCaseMediator --> INotificationService
+ApplicationUseCaseMediator --> HousingService
+ApplicationUseCaseMediator --> IRentalApplicationRepository
+ApplicationUseCaseMediator --> INotificationService
+
+' Domain dependencies
+HousingService --> IHousingRepository
+ListingSearchCriteria --> RoomType
+HousingListing --> RoomType
+RentalApplication --> ApplicationStatus
+
+' Infrastructure dependencies
+EfHousingRepository --> AppDbContext
+EfRentalApplicationRepository --> AppDbContext
+AppDbContext --> HousingListing
+AppDbContext --> RentalApplication
+AppDbContext --> ApplicationStatus
+
+@enduml

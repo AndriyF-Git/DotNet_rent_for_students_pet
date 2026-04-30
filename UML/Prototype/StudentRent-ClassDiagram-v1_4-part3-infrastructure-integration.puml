@@ -1,0 +1,139 @@
+@startuml ClassDiagram-v1_4-part3-infrastructure-integration
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title StudentRent v1.4 - Part 3 (Infrastructure + Integration, Prototype interface target)
+
+package "Application.UseCases" {
+  abstract class BaseUseCaseMediator {
+    #ExecuteApplyTemplateAsync(listingId, applicant, ct)
+  }
+
+  interface IApplicationUseCaseMediator {
+    +ApplyAsync(listingId, applicant, ct)
+    +ApplyFromProfileAsync(listingId, profileId, ct)
+    +CreateProfileAsync(prototype, ct)
+    +ListProfilesAsync(ct)
+    +ListByListingIdAsync(listingId, ct)
+  }
+
+  class ApplicationUseCaseMediator {
+    -_housingService: HousingService
+    -_rentalApplicationRepository: IRentalApplicationRepository
+    -_prototypeRepository: IRentalApplicationProfileRepository
+  }
+
+  class ListingUseCaseMediator {
+    -_housingService: HousingService
+  }
+}
+
+package "Application.Notifications" {
+  interface INotificationService
+}
+
+package "Domain.Prototype" {
+  interface IRentalApplicationPrototype
+}
+
+package "Domain.Contracts" {
+  interface IHousingRepository
+  interface IRentalApplicationRepository
+  interface IRentalApplicationProfileRepository {
+    +GetByIdAsync(id, ct): Task<IRentalApplicationPrototype?>
+    +ListAsync(ct): Task<IReadOnlyList<IRentalApplicationPrototype>>
+  }
+}
+
+package "Domain.Services" {
+  class HousingService
+}
+
+package "Domain.Entities" {
+  class HousingListing
+  class RentalApplication
+  class RentalApplicationProfile
+  enum ApplicationStatus
+}
+
+package "Infrastructure" {
+  class AppDbContext {
+    +HousingListings: DbSet<HousingListing>
+    +RentalApplications: DbSet<RentalApplication>
+    +RentalApplicationProfiles: DbSet<RentalApplicationProfile>
+    +OnModelCreating(modelBuilder): void
+  }
+
+  class EfHousingRepository {
+    -_db: AppDbContext
+  }
+
+  class EfRentalApplicationRepository {
+    -_db: AppDbContext
+  }
+
+  class EfRentalApplicationProfileRepository {
+    -_db: AppDbContext
+    +GetByIdAsync(id, ct): Task<IRentalApplicationPrototype?>
+    +ListAsync(ct): Task<IReadOnlyList<IRentalApplicationPrototype>>
+  }
+
+  class LogNotificationService {
+    -_logger: ILogger<LogNotificationService>
+    +NotifyAsync(message, ct): Task
+  }
+}
+
+package "Composition Root" {
+  class Program {
+    +AddDbContext<AppDbContext>()
+    +AddScoped<IHousingRepository, EfHousingRepository>()
+    +AddScoped<IRentalApplicationRepository, EfRentalApplicationRepository>()
+    +AddScoped<IRentalApplicationProfileRepository, EfRentalApplicationProfileRepository>()
+    +AddScoped<IApplicationUseCaseMediator, ApplicationUseCaseMediator>()
+    +Database.MigrateAsync()
+  }
+}
+
+ApplicationUseCaseMediator ..|> IApplicationUseCaseMediator
+ApplicationUseCaseMediator --|> BaseUseCaseMediator
+
+EfHousingRepository ..|> IHousingRepository
+EfRentalApplicationRepository ..|> IRentalApplicationRepository
+EfRentalApplicationProfileRepository ..|> IRentalApplicationProfileRepository
+LogNotificationService ..|> INotificationService
+
+ListingUseCaseMediator --> HousingService
+ApplicationUseCaseMediator --> HousingService
+ApplicationUseCaseMediator --> IRentalApplicationRepository
+ApplicationUseCaseMediator --> IRentalApplicationProfileRepository
+ApplicationUseCaseMediator --> INotificationService
+ApplicationUseCaseMediator --> IRentalApplicationPrototype
+
+HousingService --> IHousingRepository
+
+EfHousingRepository --> AppDbContext
+EfRentalApplicationRepository --> AppDbContext
+EfRentalApplicationProfileRepository --> AppDbContext
+AppDbContext --> HousingListing
+AppDbContext --> RentalApplication
+AppDbContext --> RentalApplicationProfile
+AppDbContext --> ApplicationStatus
+
+RentalApplicationProfile ..|> IRentalApplicationPrototype
+
+Program --> AppDbContext
+Program --> EfHousingRepository
+Program --> EfRentalApplicationRepository
+Program --> EfRentalApplicationProfileRepository
+Program --> ApplicationUseCaseMediator
+
+note right of EfRentalApplicationProfileRepository
+  v1.4 target:
+  repository boundary can expose
+  Prototype abstraction.
+end note
+
+@enduml

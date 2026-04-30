@@ -1,0 +1,99 @@
+@startuml
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title StudentRent v1.1 - Part 1 (Controllers + Application)
+
+package "Controllers" {
+  class ListingsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    +Index(filter, ct)
+    +Details(id, ct)
+    +Create()
+    +Create(form, ct)
+    +CreateDraft()
+    +CreateDraft(form, ct)
+    +Edit(id, ct)
+    +Edit(id, form, ct)
+    +Publish(id, ct)
+  }
+
+  class ApplicationsController {
+    -_dispatcher: CommandDispatcher
+    -_listingMediator: IListingUseCaseMediator
+    -_applicationMediator: IApplicationUseCaseMediator
+    +Apply(listingId, ct)
+    +Apply(model, ct)
+    +List(listingId, ct)
+  }
+}
+
+package "Application.Commands" {
+  interface "ICommand<TResult>" as ICommandT
+  class CommandDispatcher
+  class SearchListingsCommand
+  class GetListingDetailsCommand
+  class CreateListingCommand
+  class CreateListingDraftCommand
+  class UpdateListingDraftCommand
+  class PublishListingCommand
+  class UpdateListingCommand
+  class CreateRentalApplicationCommand
+  class GetListingApplicationsCommand
+}
+
+package "Application.UseCases" {
+  interface IListingUseCaseMediator
+  class ListingUseCaseMediator
+  interface IApplicationUseCaseMediator
+  class ApplicationUseCaseMediator
+}
+
+package "Application.Common" {
+  class Result
+  class "Result<T>" as ResultT
+  class ErrorCodes
+}
+
+package "Application.Notifications" {
+  interface INotificationService
+}
+
+ResultT --|> Result
+ListingUseCaseMediator ..|> IListingUseCaseMediator
+ApplicationUseCaseMediator ..|> IApplicationUseCaseMediator
+
+SearchListingsCommand ..|> ICommandT
+GetListingDetailsCommand ..|> ICommandT
+CreateListingCommand ..|> ICommandT
+CreateListingDraftCommand ..|> ICommandT
+UpdateListingDraftCommand ..|> ICommandT
+PublishListingCommand ..|> ICommandT
+UpdateListingCommand ..|> ICommandT
+CreateRentalApplicationCommand ..|> ICommandT
+GetListingApplicationsCommand ..|> ICommandT
+
+ListingsController --> CommandDispatcher
+ListingsController --> IListingUseCaseMediator
+ApplicationsController --> CommandDispatcher
+ApplicationsController --> IListingUseCaseMediator
+ApplicationsController --> IApplicationUseCaseMediator
+
+CommandDispatcher --> ICommandT
+SearchListingsCommand --> IListingUseCaseMediator
+GetListingDetailsCommand --> IListingUseCaseMediator
+CreateListingCommand --> IListingUseCaseMediator
+CreateListingDraftCommand --> IListingUseCaseMediator
+UpdateListingDraftCommand --> IListingUseCaseMediator
+PublishListingCommand --> IListingUseCaseMediator
+UpdateListingCommand --> IListingUseCaseMediator
+CreateRentalApplicationCommand --> IApplicationUseCaseMediator
+GetListingApplicationsCommand --> IApplicationUseCaseMediator
+
+ListingUseCaseMediator --> INotificationService
+ApplicationUseCaseMediator --> INotificationService
+
+@enduml
